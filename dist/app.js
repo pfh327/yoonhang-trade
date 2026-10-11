@@ -1,0 +1,3 @@
+if(localStorage.getItem('yhtrade.auth')!=='signed-in')location.href='login.html';
+document.querySelectorAll('[data-nav]').forEach(a=>a.addEventListener('click',()=>{document.querySelectorAll('[data-nav]').forEach(x=>x.classList.remove('active'));a.classList.add('active')}));
+const nav=document.querySelector('.nav');if(nav&&!document.querySelector('[data-logout]')){const a=document.createElement('a');a.href='login.html';a.dataset.logout='true';a.textContent='↪ 로그아웃';a.style.color='#e8b1a8';a.addEventListener('click',()=>{localStorage.removeItem('yhtrade.auth');localStorage.removeItem('yhtrade.user')});nav.appendChild(a)}
