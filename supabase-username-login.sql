@@ -13,3 +13,20 @@ as $$
 $$;
 
 grant execute on function public.get_login_email(text) to anon, authenticated;
+
+-- 이메일 또는 휴대폰 번호로 연결된 아이디를 조회합니다.
+create or replace function public.get_login_username(p_contact text)
+returns text
+language sql
+security definer
+set search_path = public, auth
+as $$
+  select p.username
+  from auth.users u
+  join public.profiles p on p.id = u.id
+  where lower(u.email) = lower(trim(p_contact))
+     or regexp_replace(coalesce(p.phone, ''), '[^0-9]', '', 'g') = regexp_replace(trim(p_contact), '[^0-9]', '', 'g')
+  limit 1;
+$$;
+
+grant execute on function public.get_login_username(text) to anon, authenticated;
