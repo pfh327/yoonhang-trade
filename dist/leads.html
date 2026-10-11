@@ -6,7 +6,7 @@ const starter=[
  {name:'뉴골드',area:'통일상가',interest:'남성 캐주얼 바지',status:'연락 대기',next:'문자 발송'},
  {name:'마스터베어',area:'B동 2층 2100호',interest:'남녀 F/W',status:'확인 필요',next:'전화 연결'}
 ];
-let leads=JSON.parse(localStorage.getItem('yhtrade.leads')||'null')||starter;const defaultRecommendations=[
+let leads=JSON.parse(localStorage.getItem('yhtrade.leads')||'null')||starter;function hasContact(x){const d=saved[x.name]||{};return Boolean(String(d.email||x.email||'').trim()||String(d.phone||x.phone||'').trim())}leads=leads.filter(hasContact);saveLeads();const defaultRecommendations=[
  {name:'뉴골드 — 통일상가',evidence:'2025년 11월 매장 채용 공고에서 남성 캐주얼 바지 도매업체라고 소개',talk:'가을·겨울 바지의 중국 생산 여부와 주력 상품 발주량',source:'공개 채용 공고 확인'},
  {name:'마스터베어 — 통일상가 B동 2층 2100호',evidence:'공식 사이트에 매장 주소와 남녀 가을·겨울 상품 구분 공개',talk:'바지·재킷 중 외부 생산 협력을 검토할 품목이 있는지',source:'공식 사이트 확인'},
  {name:'ELTOO(엘트) — 누존 1층',evidence:'2025년 1월 매장 채용 공고에서 여성 바지 전문 매장이라고 소개',talk:'여성 팬츠 생산 방식과 시즌별 예상 물량',source:'공개 채용 공고 확인'},
@@ -27,6 +27,7 @@ function contactKey(name){return String(name||'').split(' — ')[0].trim()}funct
 document.querySelector('#importBtn').onclick=function(){document.querySelector('#excelInput').click()};document.querySelector('#excelInput').onchange=function(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(ev){try{const wb=XLSX.read(new Uint8Array(ev.target.result),{type:'array',cellDates:true});const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:''});importRows(rows)}catch(err){alert('엑셀 파일을 읽지 못했습니다. 파일 형식을 확인해 주세요.')}};reader.readAsArrayBuffer(file);e.target.value=''};
 document.querySelector('#dailyBtn').onclick=function(){if(localStorage.getItem('yhtrade.apiEnabled')==='true'){alert('API 검색 연결을 준비 중입니다. 서버 주소가 설정되면 자동 검색 결과가 표시됩니다.');return}document.querySelector('#excelInput').click()};document.querySelector('#closeModal').onclick=function(){modal.classList.remove('open')};document.querySelector('#saveContact').onclick=function(){saveContactData('연락처 저장');modal.classList.remove('open')};document.querySelector('#sendMail').onclick=function(){if(!email.value.trim()){alert('이메일을 먼저 입력해 주세요.');return}saveContactData('메일 작성');const p=profile();const name=p.name||'윤항무역';const signature='\n\n'+name+'\nHP: '+senderPhone.value.trim()+'\n이메일: '+senderEmail.value.trim();location.href='mailto:'+encodeURIComponent(email.value.trim())+'?subject='+encodeURIComponent(document.querySelector('#mailSubject').value)+'&body='+encodeURIComponent(document.querySelector('#mailBody').value+signature)};document.querySelector('#sendSms').onclick=function(){if(!phone.value.trim()){alert('휴대폰 번호를 먼저 입력해 주세요.');return}saveContactData('문자 작성');location.href='sms:'+phone.value.trim()+'?body='+encodeURIComponent((profile().name||'윤항무역')+'\nHP: '+senderPhone.value.trim())};document.querySelector('#addBtn').onclick=function(){open('새 고객')};render();renderRecommendations();
 })();</script></body></html>
+
 
 
 
