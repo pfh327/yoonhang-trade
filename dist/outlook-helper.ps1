@@ -1,6 +1,6 @@
-$ErrorActionPreference='SilentlyContinue'
+﻿$ErrorActionPreference='SilentlyContinue'
 $listener=New-Object System.Net.HttpListener
-$listener.Prefixes.Add('http://127.0.0.1:8765/')
+$listener.Prefixes.Add('http://127.0.0.1:8766/')
 $listener.Start()
 $outlook=$null
 try{$outlook=New-Object -ComObject Outlook.Application}catch{}
