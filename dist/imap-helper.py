@@ -1,6 +1,7 @@
-import os, json, imaplib, email
+import os, json, imaplib, smtplib, email
 from email.header import decode_header
 from email.utils import parsedate_to_datetime
+from email.message import EmailMessage
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
@@ -78,6 +79,18 @@ class Handler(BaseHTTPRequestHandler):
             except Exception as e: self.send_json({'replies':[],'error':str(e)}, 200)
         else: self.send_json({'error':'unknown endpoint'},404)
     def do_POST(self):
+        if self.path == '/send':
+            try:
+                length=int(self.headers.get('Content-Length','0')); data=json.loads(self.rfile.read(length).decode('utf-8'))
+                to=str(data.get('to','')).strip(); subject=str(data.get('subject','')).strip(); body=str(data.get('body',''))
+                if not to or not subject or not body: raise ValueError('받는 사람, 제목, 내용을 입력하세요.')
+                cfg=read_config()
+                if not cfg: raise ValueError('126메일 연결을 먼저 저장하세요.')
+                msg=EmailMessage(); msg['From']=cfg['email']; msg['To']=to; msg['Subject']=subject; msg.set_content(body)
+                smtp=smtplib.SMTP_SSL('smtp.126.com',465,timeout=30); smtp.login(cfg['email'],cfg['code']); smtp.send_message(msg); smtp.quit()
+                self.send_json({'ok':True})
+            except Exception as e: self.send_json({'ok':False,'error':str(e)},400)
+            return
         if self.path != '/configure': return self.send_json({'error':'unknown endpoint'},404)
         try:
             length=int(self.headers.get('Content-Length','0'))
