@@ -103,6 +103,7 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json({'ok':True,'imap':True})
         except Exception as e: self.send_json({'ok':False,'error':str(e)},400)
 
-print('126메일 도우미가 실행 중입니다. 이 창을 닫지 마세요.')
+print('126메일 도우미 v2가 실행 중입니다. 이 창을 닫지 마세요.')
 print('연결 확인 주소: http://127.0.0.1:8766/health')
 HTTPServer(('127.0.0.1',PORT), Handler).serve_forever()
+
