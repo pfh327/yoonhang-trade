@@ -1,16 +1,22 @@
 @echo off
+setlocal
 set "SCRIPT=%~dp0imap-helper.py"
 if not exist "%SCRIPT%" (
-  echo imap-helper.py ??? ????. ????? ?? ZIP? ?? ???? ??? ?? ?????.
+  echo imap-helper.py ??? ?? ?????. ZIP ??? ?? ?? ???.
   pause
   exit /b 1
 )
+rem Windows ?? ? ?? ????? ??? ?? ??? ??? ??? ?????.
 set "STARTUP=%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup"
-set "LINK=%STARTUP%\YoonhangTrade126Mail.lnk"
-if not exist "%LINK%" powershell -NoProfile -ExecutionPolicy Bypass -Command "$w=New-Object -ComObject WScript.Shell; $l=$w.CreateShortcut($env:LINK); $l.TargetPath=$env:ComSpec; $l.Arguments='/c ""%~dp0imap-helper-start.cmd""'; $l.WorkingDirectory='%~dp0'; $l.WindowStyle=7; $l.Save()"
+set "AUTO_CMD=%STARTUP%\YoonhangTrade126Mail.cmd"
+set "AUTO_PY=%STARTUP%\imap-helper.py"
+if exist "%STARTUP%" (
+  copy /Y "%SCRIPT%" "%AUTO_PY%" >nul 2>nul
+  copy /Y "%~f0" "%AUTO_CMD%" >nul 2>nul
+)
 where py >nul 2>nul
 if %errorlevel%==0 (py -3 "%SCRIPT%" & pause & exit /b)
 where python >nul 2>nul
 if %errorlevel%==0 (python "%SCRIPT%" & pause & exit /b)
-echo Python 3? ???? ?? ????.
+echo Python 3? ?? ?????. Python? ??? ? ?? ?????.
 pause
