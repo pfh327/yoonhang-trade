@@ -74,7 +74,7 @@ class Handler(BaseHTTPRequestHandler):
                 box=connect(); box.logout(); self.send_json({'running':True,'imap':True})
             except Exception as e:
                 self.send_json({'running':True,'imap':False,'error':str(e)})
-        elif self.path == '/replies':
+        elif path == '/replies':
             try: self.send_json({'replies':response_items()})
             except Exception as e: self.send_json({'replies':[],'error':str(e)}, 200)
         else: self.send_json({'error':'unknown endpoint'},404)
@@ -91,7 +91,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({'ok':True})
             except Exception as e: self.send_json({'ok':False,'error':str(e)},400)
             return
-        if self.path != '/configure': return self.send_json({'error':'unknown endpoint'},404)
+        if path != '/configure': return self.send_json({'error':'unknown endpoint'},404)
         try:
             length=int(self.headers.get('Content-Length','0'))
             data=json.loads(self.rfile.read(length).decode('utf-8'))
@@ -106,4 +106,5 @@ class Handler(BaseHTTPRequestHandler):
 print('126메일 도우미 v2가 실행 중입니다. 이 창을 닫지 마세요.')
 print('연결 확인 주소: http://127.0.0.1:8766/health')
 HTTPServer(('127.0.0.1',PORT), Handler).serve_forever()
+
 
