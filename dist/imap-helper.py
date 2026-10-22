@@ -105,7 +105,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({'ok':True})
             except Exception as e: self.send_json({'ok':False,'error':str(e)},400)
             return
-        if path != '/configure': return self.send_json({'error':'unknown endpoint'},404)
+        if self.path != '/configure': return self.send_json({'error':'unknown endpoint'},404)
         try:
             length=int(self.headers.get('Content-Length','0'))
             data=json.loads(self.rfile.read(length).decode('utf-8'))
