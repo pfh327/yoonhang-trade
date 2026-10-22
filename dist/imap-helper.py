@@ -5,7 +5,7 @@ from email.message import EmailMessage
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
-PORT = 8766
+PORT = 18766
 CONFIG_DIR = Path(os.environ.get('LOCALAPPDATA', str(Path.home()))) / 'YoonhangTrade'
 CONFIG_PATH = CONFIG_DIR / 'imap-config.json'
 
@@ -118,7 +118,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as e: self.send_json({'ok':False,'error':str(e)},400)
 
 print('126메일 도우미 v2가 실행 중입니다. 이 창을 닫지 마세요.')
-print('연결 확인 주소: http://127.0.0.1:8766/health')
+print('연결 확인 주소: http://127.0.0.1:18766/health')
 HTTPServer(('127.0.0.1',PORT), Handler).serve_forever()
 
 
