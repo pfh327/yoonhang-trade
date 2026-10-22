@@ -34,6 +34,20 @@ def decode_text(value):
             out.append(part)
     return ''.join(out)
 
+def message_body(msg):
+    if msg.is_multipart():
+        parts = msg.walk()
+    else:
+        parts = [msg]
+    for part in parts:
+        if part.get_content_type() != 'text/plain':
+            continue
+        try:
+            return part.get_payload(decode=True).decode(part.get_content_charset() or 'utf-8', errors='replace')
+        except Exception:
+            return ''
+    return ''
+
 def response_items():
     box = connect()
     try:
@@ -42,7 +56,7 @@ def response_items():
         ids = data[0].split()[-100:]
         out=[]
         for msg_id in reversed(ids):
-            typ, msg_data = box.fetch(msg_id, '(BODY.PEEK[HEADER])')
+            typ, msg_data = box.fetch(msg_id, '(RFC822)')
             raw = b''.join(x[1] for x in msg_data if isinstance(x, tuple))
             msg = email.message_from_bytes(raw)
             received = msg.get('Date','')
@@ -50,7 +64,7 @@ def response_items():
                 received = parsedate_to_datetime(received).isoformat()
             except Exception:
                 pass
-            out.append({'sender': decode_text(msg.get('Reply-To') or msg.get('From')), 'subject': decode_text(msg.get('Subject')), 'received': received})
+            out.append({'sender': decode_text(msg.get('Reply-To') or msg.get('From')), 'subject': decode_text(msg.get('Subject')), 'body': message_body(msg), 'received': received})
         return out
     finally:
         try: box.logout()
@@ -74,7 +88,7 @@ class Handler(BaseHTTPRequestHandler):
                 box=connect(); box.logout(); self.send_json({'running':True,'imap':True})
             except Exception as e:
                 self.send_json({'running':True,'imap':False,'error':str(e)})
-        elif path == '/replies':
+        elif self.path == '/replies':
             try: self.send_json({'replies':response_items()})
             except Exception as e: self.send_json({'replies':[],'error':str(e)}, 200)
         else: self.send_json({'error':'unknown endpoint'},404)
