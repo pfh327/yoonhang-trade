@@ -11,6 +11,11 @@ document.addEventListener('DOMContentLoaded',async()=>{
  const publicPages=['login.html','signup.html','find-id.html','find-password.html'];
  if(!publicPages.some(p=>location.pathname.endsWith(p)))requireLogin();
  const client=await loadSupabase();
+ if(client){
+  const {data}=await client.auth.getSession();
+  if(data?.session){localStorage.setItem(AUTH_KEY,'signed-in');if(data.session.user?.email)localStorage.setItem('yhtrade.user',data.session.user.email)}
+  client.auth.onAuthStateChange((_event,session)=>{if(session){localStorage.setItem(AUTH_KEY,'signed-in')}else if(_event==='SIGNED_OUT'){localStorage.removeItem(AUTH_KEY);localStorage.removeItem('yhtrade.user')}});
+ }
  const login=document.querySelector('#loginForm');
  if(login)login.addEventListener('submit',async e=>{e.preventDefault();const id=document.querySelector('#loginId').value.trim();const pw=document.querySelector('#loginPw').value.trim();if(!id||!pw){showNotice('아이디 또는 이메일과 비밀번호를 입력해 주세요.');return}if(client){let email=id;if(!id.includes('@')){const {data,error}=await client.rpc('get_login_email',{p_username:id});if(error||!data){showNotice('등록된 아이디를 찾을 수 없습니다.');return}email=data}const {error}=await client.auth.signInWithPassword({email,password:pw});if(error){showNotice('로그인할 수 없습니다. 아이디·이메일과 비밀번호를 확인해 주세요.');return}}localStorage.setItem(AUTH_KEY,'signed-in');localStorage.setItem('yhtrade.user',id);showNotice('로그인되었습니다. 잠시 후 대시보드로 이동합니다.','ok');setTimeout(goAfterLogin,500)});
  const signout=document.querySelector('#signout');if(signout)signout.addEventListener('click',async()=>{if(client)await client.auth.signOut();localStorage.removeItem(AUTH_KEY);localStorage.removeItem('yhtrade.user');location.href='login.html'});
