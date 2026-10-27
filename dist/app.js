@@ -62,4 +62,28 @@
     if(today)today.textContent='23/23';
     if(contacts)contacts.textContent='78';
   },1200);
+
+  // 고객발굴 페이지의 기존 초기화 스크립트가 뒤늦게 표를 다시 그려도,
+  // 연락 완료 업체가 추천 목록으로 되돌아가지 않도록 최종 동기화합니다.
+  const syncRecommendations=()=>{
+    const table=document.querySelector('#recommendationRows');
+    if(!table)return;
+    let leads=[];
+    try{leads=JSON.parse(localStorage.getItem('yhtrade.leads')||'[]')}catch(_e){leads=[]}
+    const done=new Set(leads.filter(x=>x&&x.contactActivityConfirmed===true).map(x=>String(x.name||'').split(' — ')[0].trim().toLowerCase().replace(/[\s()（）.·,，'"-]+/g,'')));
+    const seen=new Set();
+    Array.from(table.querySelectorAll('tr')).forEach(row=>{
+      const label=row.querySelector('b');
+      if(!label)return;
+      const key=String(label.textContent||'').trim().toLowerCase().replace(/[\s()（）.·,，'"-]+/g,'');
+      if(done.has(key)||seen.has(key))row.remove();
+      else seen.add(key);
+    });
+    const count=document.querySelector('#recommendationCount');
+    if(count)count.textContent=' ('+table.querySelectorAll('tr').length+'곳)';
+  };
+  if(document.querySelector('#recommendationRows')){
+    [1800,3500,6000].forEach(ms=>setTimeout(syncRecommendations,ms));
+    setInterval(syncRecommendations,3000);
+  }
 })();
