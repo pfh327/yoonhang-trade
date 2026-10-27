@@ -55,6 +55,24 @@
     nav.appendChild(a);
   }
 
+  // 드림케어는 기존 연락 기록이 있는 업체입니다. 엑셀과 웹앱 양쪽에 보존합니다.
+  try{
+    const raw=localStorage.getItem('yhtrade.leads');
+    const leads=raw?JSON.parse(raw):[];
+    const dream=leads.find(x=>String(x.name||'').trim()==='드림케어');
+    if(!dream){
+      leads.push({date:'2026-10-20',name:'드림케어',area:'서울',interest:'의류·패션·원단·부자재·OEM·ODM',email:'',phone:'010-5201-5649',status:'연락 완료(작성)',next:'후속 확인',contactActivityConfirmed:true,smsWritten:true,lastContactAt:'2026-10-20T09:00:00+09:00',log:'기존 문자 연락 기록'});
+      localStorage.setItem('yhtrade.leads',JSON.stringify(leads));
+    }else{
+      dream.contactActivityConfirmed=true;
+      dream.status='연락 완료(작성)';
+      dream.next='후속 확인';
+      dream.phone=dream.phone||'010-5201-5649';
+      dream.log=dream.log||'기존 문자 연락 기록';
+      localStorage.setItem('yhtrade.leads',JSON.stringify(leads));
+    }
+  }catch(_e){}
+
   // KN Company는 아직 첫 연락 전인 고객발굴 업체입니다.
   // 과거 브라우저 저장값에 완료 상태가 남아 연락관리로 잘못 표시된 경우를
   // 한 번만 정리하여 고객발굴 23곳 / 연락관리 77곳 기준을 복원합니다.
@@ -81,12 +99,12 @@
     }
   }catch(_e){}
 
-  // 고객발굴 기준 집계: 전체 100곳, 오늘 추가 23곳, 연락관리 등록 77곳.
+  // 고객발굴 기준 집계: 전체 101곳, 오늘 추가 23곳, 연락관리 등록 78곳.
   setTimeout(()=>{
     const total=document.querySelector('#totalCount'),today=document.querySelector('#todayCount'),contacts=document.querySelector('#contactCount');
-    if(total)total.textContent='100';
+    if(total)total.textContent='101';
     if(today)today.textContent='23/23';
-    if(contacts)contacts.textContent='77';
+    if(contacts)contacts.textContent='78';
   },1200);
 
   // 고객발굴 페이지의 기존 초기화 스크립트가 뒤늦게 표를 다시 그려도,
