@@ -2,10 +2,15 @@ const AUTH_KEY='yhtrade.auth';
 const SUPABASE_URL='https://ggzmsicyfncxtgpshphx.supabase.co';
 const SUPABASE_PUBLISHABLE_KEY='sb_publishable_BVPs38_MMcmXF4sh84tSOg_CT10Jw1N';
 let supabaseClient=null;
+let resolveAuthReady;
+window.yhAuthReady=new Promise(resolve=>{resolveAuthReady=resolve});
 function showNotice(message,type='error'){const el=document.querySelector('#notice');if(!el)return;el.textContent=message;el.className=`notice show ${type}`}
 function goAfterLogin(){location.href='index.html'}
 function isSignedIn(){return localStorage.getItem(AUTH_KEY)==='signed-in'}
-function requireLogin(){if(!isSignedIn())location.href='login.html'}
+function requireLogin(){
+ if(isSignedIn())return;
+ window.yhAuthReady.then(ok=>{if(!ok&&!location.pathname.endsWith('login.html'))location.replace('login.html')});
+}
 function loadSupabase(){return new Promise(resolve=>{if(window.supabase){supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);resolve(supabaseClient);return}const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';s.onload=()=>{supabaseClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);resolve(supabaseClient)};s.onerror=()=>resolve(null);document.head.appendChild(s)})}
 document.addEventListener('DOMContentLoaded',async()=>{
  const publicPages=['login.html','signup.html','find-id.html','find-password.html'];
@@ -16,6 +21,8 @@ document.addEventListener('DOMContentLoaded',async()=>{
   if(data?.session){localStorage.setItem(AUTH_KEY,'signed-in');if(data.session.user?.email)localStorage.setItem('yhtrade.user',data.session.user.email)}
   client.auth.onAuthStateChange((_event,session)=>{if(session){localStorage.setItem(AUTH_KEY,'signed-in')}else if(_event==='SIGNED_OUT'){localStorage.removeItem(AUTH_KEY);localStorage.removeItem('yhtrade.user')}});
  }
+ const signedIn=isSignedIn();
+ if(resolveAuthReady)resolveAuthReady(signedIn);
  const login=document.querySelector('#loginForm');
  if(login)login.addEventListener('submit',async e=>{e.preventDefault();const id=document.querySelector('#loginId').value.trim();const pw=document.querySelector('#loginPw').value.trim();if(!id||!pw){showNotice('아이디 또는 이메일과 비밀번호를 입력해 주세요.');return}if(client){let email=id;if(!id.includes('@')){const {data,error}=await client.rpc('get_login_email',{p_username:id});if(error||!data){showNotice('등록된 아이디를 찾을 수 없습니다.');return}email=data}const {error}=await client.auth.signInWithPassword({email,password:pw});if(error){showNotice('로그인할 수 없습니다. 아이디·이메일과 비밀번호를 확인해 주세요.');return}}localStorage.setItem(AUTH_KEY,'signed-in');localStorage.setItem('yhtrade.user',id);showNotice('로그인되었습니다. 잠시 후 대시보드로 이동합니다.','ok');setTimeout(goAfterLogin,500)});
  const signout=document.querySelector('#signout');if(signout)signout.addEventListener('click',async()=>{if(client)await client.auth.signOut();localStorage.removeItem(AUTH_KEY);localStorage.removeItem('yhtrade.user');location.href='login.html'});
