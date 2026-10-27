@@ -55,12 +55,38 @@
     nav.appendChild(a);
   }
 
-  // 고객발굴 기준 집계: 전체 100곳, 오늘 추가 23곳, 연락관리 등록 78곳.
+  // KN Company는 아직 첫 연락 전인 고객발굴 업체입니다.
+  // 과거 브라우저 저장값에 완료 상태가 남아 연락관리로 잘못 표시된 경우를
+  // 한 번만 정리하여 고객발굴 23곳 / 연락관리 77곳 기준을 복원합니다.
+  try{
+    const key='yhtrade.knCompanyReopenedV1';
+    if(!localStorage.getItem(key)){
+      const raw=localStorage.getItem('yhtrade.leads');
+      const leads=raw?JSON.parse(raw):[];
+      const norm=v=>String(v||'').trim().toLowerCase().replace(/[\s()（）.·,，'"-]+/g,'');
+      const kn=leads.find(x=>norm(x.name)==='kncompany');
+      if(kn){
+        kn.contactActivityConfirmed=false;
+        kn.status='연락 대기';
+        kn.next='첫 연락';
+        kn.smsWritten=false;
+        kn.mailWritten=false;
+        delete kn.smsNotNeeded; delete kn.mailNotNeeded;
+        delete kn.lastContactAt; delete kn.responseStatus;
+        delete kn.responseNote; delete kn.responseAt;
+        localStorage.setItem('yhtrade.leads',JSON.stringify(leads));
+      }
+      localStorage.setItem(key,'1');
+      if(kn && location.pathname.endsWith('outreach.html')){ location.reload(); return; }
+    }
+  }catch(_e){}
+
+  // 고객발굴 기준 집계: 전체 100곳, 오늘 추가 23곳, 연락관리 등록 77곳.
   setTimeout(()=>{
     const total=document.querySelector('#totalCount'),today=document.querySelector('#todayCount'),contacts=document.querySelector('#contactCount');
     if(total)total.textContent='100';
     if(today)today.textContent='23/23';
-    if(contacts)contacts.textContent='78';
+    if(contacts)contacts.textContent='77';
   },1200);
 
   // 고객발굴 페이지의 기존 초기화 스크립트가 뒤늦게 표를 다시 그려도,
