@@ -133,15 +133,8 @@
     setInterval(syncRecommendations,3000);
   }
 
-  // 연락관리에서는 오늘 고객발굴 23곳을 제외하고 실제 관리 대상만 집계합니다.
-  const syncOutreach=()=>{
-    const table=document.querySelector('#outreachRows');
-    if(!table)return;
-    const norm=v=>String(v||'').split(' — ')[0].trim().toLowerCase().replace(/[\s()（）.·,，'"-]+/g,'');
-    const discovery=new Set(['코리안프렌즈','대련 리스폰','에프엔엔','이유 인터네셔널','티집','이에스에르마나','제이앤케이컴퍼니리미티드','Weavnora','굿트러스트','FM컴퍼니','Afirst','TTAM','SINOPROUD','ATLY','grain works','류콘 글로벌','KN Company','Hansoll','WRT Studio','SHINTS','모아라벨(두용상사)','FNA KOREA','MASTIC KOREA'].map(norm));
-    Array.from(table.querySelectorAll('tr')).forEach(row=>{const b=row.querySelector('b');if(b&&discovery.has(norm(b.textContent)))row.remove()});
-    const summary=document.querySelector('#outreachSummary');
-    if(summary){let leads=[];try{leads=JSON.parse(localStorage.getItem('yhtrade.leads')||'[]')}catch(_e){}const n=new Set(leads.filter(x=>x&&x.contactActivityConfirmed===true&&!discovery.has(norm(x.name))).map(x=>norm(x.name))).size;summary.textContent='('+n+'곳 / 전체 '+n+'곳)'}
-  };
+  // 연락관리 화면은 outreach.html이 엑셀 기준 NO·발굴일·중복 제거를 직접 관리합니다.
+  // 이전의 주기적 보정 로직이 화면을 다시 덮어써 77곳으로 줄어드는 문제를 막습니다.
+  const syncOutreach=()=>{};
   if(document.querySelector('#outreachRows')){[1800,3500,6000].forEach(ms=>setTimeout(syncOutreach,ms));setInterval(syncOutreach,3000)}
 })();
