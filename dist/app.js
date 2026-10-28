@@ -82,8 +82,24 @@ window.addEventListener('DOMContentLoaded', function(){
 // Keep the first-contact SMS wording consistent with the approved mobile message.
 window.addEventListener('DOMContentLoaded', function(){
   window.smsTemplate = function(company, person){
-    const greeting = person ? person + '님' : company + ' 담당자님';
-    return '안녕하세요. ' + greeting + '\n중국 무역과 구매대행을 전문으로 하는 윤항무역 Aimee Park입니다.\n15년 이상 중국 현지 소싱·OEM/ODM 생산을 진행하고 있으며, 이우 현지 사무실을 통해 검품·물류·통관까지 일괄 대행합니다.\n상품 사진이나 원단·부자재를 보내주셔도 소싱 및 견적 안내가 가능하며, 샘플로 품질 확인도 가능합니다.\n작은 거래부터 좋은 인연으로 이어지길 희망합니다. 편하게 문의 부탁드립니다.\n윤항무역 Aimee Park\n홈페이지: https://www.trade-yh.com\n010-4960-1314';
+    const greeting = person ? person + ' 대표님' : company + ' 대표님';
+    return '안녕하세요. ' + greeting + '\n중국 무역 전문업체 윤항무역 Aimee Park입니다.\n15년 이상 중국 현지 소싱·OEM/ODM 생산을 진행하고 있으며, 이우 현지 사무실을 통해 검품·물류·통관까지 일괄 대행합니다.\n상품 사진이나 원단·부자재 샘플을 보내주셔도 소싱 및 견적 안내가 가능하며, 샘플로 품질 확인도 가능합니다.\n작은 거래부터 좋은 인연으로 이어지길 희망합니다. 편하게 문의 부탁드립니다.\n윤항무역 Aimee Park\n홈페이지: https://www.trade-yh.com\n010-4960-1314';
+  };
+
+  // leads.html has an older inline template. Rewrite SMS compose URLs here so
+  // every first-contact button opens Phone Link with the approved wording.
+  const nativeOpen = window.open;
+  window.open = function(url, target, features){
+    if(typeof url === 'string' && url.indexOf('sms:') === 0){
+      const phone = url.slice(4).split('?')[0];
+      const personField = document.querySelector('#recipientName');
+      const titleField = document.querySelector('#modalTitle');
+      const person = personField ? personField.value.trim() : '';
+      let company = titleField ? titleField.textContent.replace(/\s*연락처\s*$/,'').trim() : '';
+      if(!company) company = person || '담당자';
+      url = 'sms:' + phone + '?body=' + encodeURIComponent(window.smsTemplate(company, person));
+    }
+    return nativeOpen.call(window, url, target, features);
   };
 });
 
