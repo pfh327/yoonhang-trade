@@ -57,4 +57,23 @@ document.addEventListener('DOMContentLoaded',ensure);window.addEventListener('pa
     if(changed){localStorage.setItem(leadKey,JSON.stringify(leads));if(typeof render==='function')render();if(typeof renderRecommendations==='function')renderRecommendations();}
     localStorage.setItem(contactKey,JSON.stringify(contacts));
   }catch(e){}
+})();</script><script>
+(function(){
+  if(window.__YH_FINAL_LEADS_RENDERER__) return; window.__YH_FINAL_LEADS_RENDERER__=true;
+  var KEY='yhtrade.leads', CONTACT='yhtrade.contacts';
+  function text(v){return String(v==null?'':v).trim()}
+  function norm(v){return text(v).toLowerCase().replace(/[\s\-_.()·ㆍ㈜株式会社]/g,'').replace(/[^\w가-힣]/g,'')}
+  function alias(n){var k=norm(n);if(['gollala','gollalainc','골라라'].indexOf(k)>=0)return '골라라';return text(n)}
+  function dateOf(x){var v=x.discoveryDate||x.발굴일||x.discoveredAt||x.foundDate||x.date||x.createdAt||'';var d=new Date(v);return isNaN(d)?text(v).slice(0,10):d.toISOString().slice(0,10)}
+  function done(x){return !!(x.contactActivityConfirmed||x.firstContactCompleted||x.mailSent||x.mailConfirmed||x.smsSent||x.smsConfirmed||x.mailNotNeeded||x.smsNotNeeded||/연락\s*완료|메일\s*완료|문자\s*완료|연락\s*불가/.test(text(x.status)))}
+  function canon(){var raw=[];try{raw=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){};if(!Array.isArray(raw))raw=[];var out=[], groups=[];
+    raw.forEach(function(x){if(!x||!text(x.name))return;var n=alias(x.name);if(norm(n)==='weavnora')return;var e=text(x.email),p=text(x.phone), keys=[norm(n),e.toLowerCase(),p.replace(/\D/g,'')].filter(Boolean);var i=-1;for(var j=0;j<out.length;j++){var ok=keys.some(function(k){return groups[j].indexOf(k)>=0});if(ok){i=j;break}}
+      if(i<0){out.push(Object.assign({},x,{name:n,email:e||text(x.email),phone:p,discoveryDate:dateOf(x)}));groups.push(keys)}else{var y=out[i];Object.keys(x).forEach(function(k){if(text(x[k])&&!text(y[k]))y[k]=x[k]});y.name=n==='골라라'?'골라라':text(y.name);if(n==='골라라')y.email='lucia@gollala.com';y.discoveryDate=dateOf(y)||dateOf(x);groups[i]=groups[i].concat(keys)}
+    });return out}
+  function render(){var rows=canon();try{localStorage.setItem(KEY,JSON.stringify(rows))}catch(e){};var contacts=rows.filter(done), candidates=rows.filter(function(x){return !done(x)&&(text(x.email)||/^010/.test(text(x.phone).replace(/\D/g,'')))}), dates=rows.map(function(x){return dateOf(x)}).filter(Boolean), latest=dates.slice().sort().pop(), today=latest?dates.filter(function(d){return d===latest}).length:0;
+    function set(id,v){var el=document.getElementById(id);if(el)el.textContent=v}
+    set('totalCount',rows.length);set('contactCount',contacts.length);set('todayCount',today+'/'+today);set('totalSummary','전체 '+rows.length+'곳');set('recommendationCount',candidates.length+'곳');
+    var box=document.getElementById('recommendationRows');if(box){box.innerHTML='';candidates.forEach(function(x,i){var tr=document.createElement('tr');tr.innerHTML='<td>'+(i+1)+'</td><td>'+text(x.name)+'</td><td>'+text(x.email||'미등록')+'</td><td>'+text(x.phone||'미등록')+'</td><td><button type="button">첫 연락</button></td>';box.appendChild(tr)})}
+  }
+  render();setInterval(render,250);window.addEventListener('storage',render);
 })();</script></body></html>

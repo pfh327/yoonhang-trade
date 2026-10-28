@@ -22,6 +22,55 @@ function yhtradeLiveStats(){
   return {total:rows.length,today:todayCount,contacts};
 }
 
+/* FINAL V3: canonical leads rendering and strict contact completion */
+(function(){
+  if(!/\/leads\.html$/.test(location.pathname) || window.__YH_FINAL_V3__) return;
+  window.__YH_FINAL_V3__=true;
+  const STORE='yhtrade.leads';
+  const clean=v=>String(v==null?'':v).trim();
+  const norm=v=>clean(v).toLowerCase().replace(/[\s\-_.()·ㆍ]/g,'');
+  const alias={골라라:'gollala','gollala inc':'gollala','gollalainc':'gollala',gollala:'gollala'};
+  const keyName=v=>alias[norm(v)]||norm(v);
+  const esc=v=>clean(v).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  const email=v=>clean(v).toLowerCase();
+  const phone=v=>clean(v).replace(/[^0-9+]/g,'');
+  const dateOf=r=>clean(r.discoveryDate||r['발굴일']||r.discoveredAt||r.foundDate||r.date||r.createdAt);
+  const dateKey=v=>{const m=clean(v).match(/(\d{4})[^\d]?(\d{1,2})[^\d]?(\d{1,2})/); return m?`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`:''};
+  const done=r=>{
+    const s=clean(r.status);
+    return r.mailSent===true||r.mailConfirmed===true||r.smsSent===true||r.smsConfirmed===true||
+      r.mailNotNeeded===true||r.smsNotNeeded===true||['메일 완료','문자 완료','연락 불가','연락 완료'].includes(s);
+  };
+  function read(){try{const a=JSON.parse(localStorage.getItem(STORE)||'[]'); return Array.isArray(a)?a:[]}catch{return[]}}
+  function canonical(){
+    const out=[], seen=new Map();
+    read().forEach((raw,i)=>{
+      const r={...raw}; const name=clean(r.name||r.customer||r.company); if(!name||keyName(name)==='weavnora') return;
+      const em=email(r.email), ph=phone(r.phone||r.mobile||r.tel); const k=em?`e:${em}`:ph?`p:${ph}`:`n:${keyName(name)}`;
+      if(seen.has(k)){
+        const j=seen.get(k), old=out[j];
+        out[j]={...old,...r,name: keyName(name)==='gollala'?'골라라':(old.name||name),email: keyName(name)==='gollala'?(old.email||em||'lucia@gollala.com'):(old.email||em),phone:old.phone||ph};
+      } else { seen.set(k,out.length); out.push({...r,name:keyName(name)==='gollala'?'골라라':name,email:em,phone:ph,__i:i}); }
+    });
+    out.sort((a,b)=>{const da=dateKey(dateOf(a)), db=dateKey(dateOf(b)); return (da||'9999').localeCompare(db||'9999') || (a.__i-b.__i)});
+    return out.map((r,i)=>({...r,__no:i+1}));
+  }
+  function render(){
+    const rows=canonical(); if(!rows.length) return;
+    const contacts=rows.filter(done), candidates=rows.filter(r=>!done(r)&&(r.email||r.phone));
+    const dates=rows.map(r=>dateKey(dateOf(r))).filter(Boolean), latest=dates.length?dates.sort().at(-1):'';
+    const latestCount=latest?rows.filter(r=>dateKey(dateOf(r))===latest).length:0;
+    const set=(sel,val)=>{const e=document.querySelector(sel); if(e)e.textContent=val};
+    set('#totalCount',String(rows.length)); set('#contactCount',String(contacts.length)); set('#todayCount',`${latestCount}/${latestCount}`); set('#recommendationCount',String(candidates.length));
+    document.querySelectorAll('[data-total-count]').forEach(e=>e.textContent=rows.length);
+    const box=document.querySelector('#recommendationRows');
+    if(box){box.innerHTML=candidates.map((r,i)=>`<tr><td><strong>${i+1}</strong><br><span class="badge">${done(r)?'고객':'후보'}</span></td><td><strong>${esc(r.name)}</strong></td><td>${esc(r.evidence||r.source||'공개 업체 연락처')}</td><td>${esc(r.interest||r.category||'의류·패션·원단·부자재·OEM·ODM')}</td><td>${r.email?`<a href="mailto:${esc(r.email)}">${esc(r.email)}</a>`:'미등록'}</td><td>${r.phone?`<a href="tel:${esc(r.phone)}">${esc(r.phone)}</a>`:'미등록'}</td><td>${esc(r.source||r.url||'공개 업체 정보')}</td><td><button class="btn recommendation-contact" data-customer="${esc(r.name)}">첫 연락</button></td></tr>`).join('');}
+    const legacy=document.querySelector('#leadRows'); if(legacy){legacy.innerHTML=''; const t=legacy.closest('table'); if(t)t.style.display='none';}
+  }
+  let scheduled=false; const tick=()=>{if(scheduled)return; scheduled=true; requestAnimationFrame(()=>{scheduled=false; render()})};
+  tick(); setInterval(tick,500); window.addEventListener('storage',tick); new MutationObserver(tick).observe(document.body,{childList:true,subtree:true});
+})();
+
 /* 엑셀 NO 76·77 연락관리 복원: outreach.html이 읽기 전에 로컬 목록을 보정합니다. */
 (function(){
   const key='yhtrade.restoreExcelOutreach7677v2';
@@ -41,6 +90,170 @@ function yhtradeLiveStats(){
   });
   localStorage.setItem('yhtrade.leads',JSON.stringify(leads));
   localStorage.setItem(key,'1');
+})();
+
+/* AUTHORITATIVE LEADS VIEW: one canonical list and conservative contact state */
+(function(){
+  if(window.__YH_AUTHORITATIVE_LEADS__) return;
+  window.__YH_AUTHORITATIVE_LEADS__ = true;
+  window.__YH_FINAL_LEADS_RENDERER__ = true;
+  const STORE='yhtrade.leads', CONTACT='yhtrade.contacts';
+  const clean=v=>String(v==null?'':v).trim();
+ const norm=v=>clean(v).toLowerCase().replace(/[\s()\-_.·,]/g,'');
+ const digits=v=>clean(v).replace(/\D/g,'');
+  const parse=key=>{try{const v=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(v)?v:[]}catch(e){return []}};
+  const alias=n=>{const x=norm(n);if(/gollala|골라라/.test(x))return '골라라';if(/weavnora/.test(x))return 'weavnora';return clean(n)};
+  const identity=r=>({name:alias(r.name||r.company||r.customer||r['고객명']),email:clean(r.email||r.mail||r['이메일']),phone:clean(r.phone||r.mobile||r.tel||r['휴대폰'])});
+  const dateOf=r=>clean(r.discoveryDate||r.discoveredAt||r.foundAt||r.createdAt||r.date||r['발굴일']);
+ const dateKey=v=>{const m=clean(v).match(/(20\d{2})[-./년](\d{1,2})[-./월](\d{1,2})/);return m?`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`:''};
+  const explicitDone=r=>{
+    const s=clean(r.status);
+    return r.mailSent===true||r.mailConfirmed===true||r.smsSent===true||r.smsConfirmed===true||r.mailNotNeeded===true||r.smsNotNeeded===true||s==='연락 불가'||s==='메일 완료'||s==='문자 완료';
+  };
+  function canonical(){
+    const all=parse(STORE).concat(parse(CONTACT).map(x=>Object.assign({},x,{__fromContact:true})));
+    const groups=new Map(), order=[];
+    all.forEach((r,i)=>{
+      const x=identity(r); if(x.name==='weavnora') return;
+      const key=norm(x.email)||digits(x.phone)||norm(x.name); if(!key)return;
+      if(!groups.has(key)){const row=Object.assign({},r,{name:x.name,email:x.email,phone:x.phone,__sourceIndex:i});groups.set(key,row);order.push(row)}
+      else {const g=groups.get(key); if(!g.email&&x.email)g.email=x.email; if(!g.phone&&x.phone)g.phone=x.phone; if(explicitDone(r))Object.assign(g,{mailSent:g.mailSent||r.mailSent,smsSent:g.smsSent||r.smsSent,mailConfirmed:g.mailConfirmed||r.mailConfirmed,smsConfirmed:g.smsConfirmed||r.smsConfirmed,mailNotNeeded:g.mailNotNeeded||r.mailNotNeeded,smsNotNeeded:g.smsNotNeeded||r.smsNotNeeded,status:r.status||g.status})}
+    });
+    order.sort((a,b)=>{const na=Number(a.no||a.NO||a.excelNo||a['번호'])||0,nb=Number(b.no||b.NO||b.excelNo||b['번호'])||0;if(na&&nb&&na!==nb)return na-nb;const da=dateKey(dateOf(a)),db=dateKey(dateOf(b));return (da||'9999').localeCompare(db||'9999')||(a.__sourceIndex-b.__sourceIndex)});
+    order.forEach((r,i)=>r.__globalNo=i+1);
+    try{localStorage.setItem(STORE,JSON.stringify(order))}catch(e){}
+    return order;
+  }
+  const esc=v=>clean(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  function set(id,v){const e=document.getElementById(id);if(e)e.textContent=String(v)}
+  function render(){
+    const rows=canonical(), contacts=rows.filter(explicitDone), candidates=rows.filter(r=>!explicitDone(r)&&(()=>{const x=identity(r);return !!(x.email||digits(x.phone))})());
+    const dates=rows.map(r=>dateKey(dateOf(r))).filter(Boolean), latest=dates.slice().sort().pop()||'', today=latest?rows.filter(r=>dateKey(dateOf(r))===latest).length:0;
+    set('totalCount',rows.length);set('contactCount',contacts.length);set('todayCount',`${today}/${today}`);set('totalSummary',`전체 ${rows.length}곳`);set('recommendationCount',`${candidates.length}곳`);
+    const box=document.getElementById('recommendationRows');if(!box)return;
+    const html=candidates.map(r=>{const x=identity(r),type=explicitDone(r)?'고객':'후보';return `<tr><td><span class="seq">${r.__globalNo}</span> <strong>${esc(x.name||'업체')}</strong><br><small>${type}</small></td><td>${esc(r.evidence||r.source||'공개 업체 연락처')}</td><td>${esc(r.interest||r.category||'의류·패션·원단·부자재·OEM·ODM')}</td><td>${x.email?`<a href="mailto:${esc(x.email)}">${esc(x.email)}</a>`:'미등록'}</td><td>${x.phone?`<a href="tel:${esc(x.phone)}">${esc(x.phone)}</a>`:'미등록'}</td><td>${esc(r.source||'공개 업체 정보')}</td><td><button type="button" class="btn recommendation-contact" data-customer="${esc(x.name)}">첫 연락</button></td></tr>`}).join('');
+    if(box.innerHTML!==html)box.innerHTML=html;
+  }
+  const run=()=>{try{render()}catch(e){}};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run);else run();
+  window.addEventListener('storage',run);setInterval(run,500);
+})();
+
+/* FINAL CANONICAL LEADS OVERRIDE: keep one dataset and one set of totals. */
+(function(){
+  if(!/\/leads\.html$/.test(location.pathname) || window.__YH_FINAL_CANONICAL_LEADS__) return;
+  window.__YH_FINAL_CANONICAL_LEADS__=true;
+  window.__YH_DISABLE_LEGACY_RECONCILIATION__=true;
+  const STORE='yhtrade.leads';
+  const clean=v=>String(v??'').trim();
+  const norm=v=>clean(v).toLowerCase().replace(/[\s().\-_/\\]+/g,'');
+  const dateKey=v=>{const s=clean(v);const m=s.match(/(\d{4})[^\d]?(\d{1,2})[^\d]?(\d{1,2})/);return m?`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`:''};
+  const todayKey=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul'}).format(new Date());
+  const identity=r=>({
+    name:clean(r?.name||r?.customer||r?.company||r?.companyName),
+    email:clean(r?.email||r?.mail),
+    phone:clean(r?.phone||r?.mobile||r?.tel)
+  });
+  const dateOf=r=>r?.discoveredAt||r?.discoveredDate||r?.discoveryDate||r?.date||r?.createdAt||r?.발굴일||'';
+  const explicitDone=r=>{
+    const s=norm(r?.status||r?.state||r?.contactStatus);
+    return r?.contactActivityConfirmed===true||r?.firstContactCompleted===true||r?.mailSent===true||r?.mailConfirmed===true||r?.smsSent===true||r?.smsConfirmed===true||r?.mailNotNeeded===true||r?.smsNotNeeded===true||['contacted','연락완료','메일완료','문자완료','연락불가'].includes(s);
+  };
+  const excluded=r=>norm(identity(r).name)==='weavnora'||norm(identity(r).email)==='postmaster@weavnora.com';
+  function canonical(){
+    let raw=[]; try{raw=JSON.parse(localStorage.getItem(STORE)||'[]')}catch(e){}
+    if(!Array.isArray(raw)) raw=[];
+    const groups=[];
+    const alias=v=>['골라라','gollalainc','gollala'].includes(norm(v));
+    for(const original of raw){
+      if(!original||excluded(original)) continue;
+      const x=identity(original); if(alias(x.name)){x.name='골라라';x.email='lucia@gollala.com';}
+      let g=groups.find(q=>{
+        const y=identity(q.row);
+        return (x.email&&y.email&&norm(x.email)===norm(y.email))||(x.phone&&y.phone&&norm(x.phone)===norm(y.phone))||(x.name&&y.name&&norm(x.name)===norm(y.name));
+      });
+      if(!g){g={row:{...original},names:[]};groups.push(g);continue;}
+      const y=identity(g.row);
+      g.row={...g.row,...original,name:y.name||x.name,email:y.email||x.email,phone:y.phone||x.phone};
+      if(explicitDone(original)) g.row={...g.row,...original};
+    }
+    const rows=groups.map(g=>g.row);
+    try{localStorage.setItem(STORE,JSON.stringify(rows))}catch(e){}
+    return rows;
+  }
+  const esc=v=>clean(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let rendering=false;
+  function render(){
+    if(rendering)return; rendering=true;
+    const rows=canonical(),contacts=rows.filter(explicitDone),candidates=rows.filter(r=>!explicitDone(r));
+    const addedToday=rows.filter(r=>dateKey(dateOf(r))===todayKey()).length;
+    const set=(id,v)=>{const e=document.querySelector(id),s=String(v);if(e&&e.textContent!==s)e.textContent=s};
+    set('#totalCount',rows.length);set('#contactCount',contacts.length);set('#todayCount',`${addedToday}/${addedToday}`);set('#totalSummary',`전체 ${rows.length}곳`);set('#recommendationCount',`${candidates.length}곳`);
+    const box=document.querySelector('#recommendationRows');
+    if(box){
+      const html=candidates.map((r,i)=>{const x=identity(r),name=x.name||'업체';return `<tr><td><strong>${i+1} ${esc(name)}</strong><br><small>${r.type==='candidate'?'후보':'고객'}</small></td><td>${esc(r.evidence||r.source||'공개 업체 연락처')}</td><td>${esc(r.interest||r.category||'의류·패션·원단·부자재·OEM·ODM')}</td><td>${esc(x.email||'미등록')}</td><td>${esc(x.phone||'미등록')}</td><td>${esc(r.source||'공개 업체 정보')}</td><td><button class="btn recommendation-contact" data-customer="${esc(name)}">첫 연락</button></td></tr>`}).join('');
+      if(box.innerHTML!==html) box.innerHTML=html;
+    }
+    rendering=false;
+  }
+  const schedule=()=>setTimeout(render,20);
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',schedule);else schedule();
+  window.addEventListener('storage',schedule);setInterval(schedule,500);
+})();
+
+/* AUTHORITATIVE LEADS VIEW: one canonical dataset, stable numbering, and real totals. */
+(function(){
+  if(!/\/leads\.html$/.test(location.pathname) || window.__YH_AUTHORITATIVE_LEADS_V2__) return;
+  window.__YH_AUTHORITATIVE_LEADS_V2__=true;
+  const STORE='yhtrade.leads';
+  const clean=v=>String(v==null?'':v).trim();
+  const norm=v=>clean(v).toLowerCase().replace(/[\s\-_.()·ㆍ]/g,'');
+  const alias={골라라:'gollala',gollala:'gollala',gollalainc:'gollala'};
+  const keyName=v=>alias[norm(v)]||norm(v);
+  const email=v=>clean(v).toLowerCase();
+  const phone=v=>clean(v).replace(/[^0-9+]/g,'');
+  const identity=r=>({name:clean(r.name||r.customer||r.company),email:email(r.email),phone:phone(r.phone||r.mobile||r.tel)});
+  const done=r=>r.contactActivityConfirmed===true||r.firstContactCompleted===true||['contacted','연락 완료','메일 완료','문자 완료','연락 불가'].includes(clean(r.status))||r.mailSent===true||r.mailConfirmed===true||r.smsSent===true||r.smsConfirmed===true||r.mailNotNeeded===true||r.smsNotNeeded===true;
+  const dateOf=r=>clean(r['발굴일']||r.discoveryDate||r.discoveredAt||r.foundDate||r.date||r.createdAt);
+  const dateKey=v=>{const s=clean(v),m=s.match(/(\d{4})\D?(\d{1,2})\D?(\d{1,2})/);return m?`${m[1]}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`:''};
+  const todayKey=()=>new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul'}).format(new Date());
+  const read=()=>{try{const v=JSON.parse(localStorage.getItem(STORE)||'[]');return Array.isArray(v)?v:[]}catch(e){return[]}};
+  function canonical(){
+    const groups=[];
+    for(const raw of read()){
+      const r=Object.assign({},raw),i=identity(r),nk=keyName(i.name);
+      if(!nk&&!i.email&&!i.phone) continue;
+      if(nk==='weavnora'||/weavnora/i.test(i.name)) continue;
+      if(nk==='gollala'){r.name='골라라';r.email='lucia@gollala.com';i.email='lucia@gollala.com'}
+      const keys=[nk&&`n:${nk}`,i.email&&`e:${i.email}`,i.phone&&`p:${i.phone}`].filter(Boolean);
+      let g=groups.find(x=>keys.some(k=>x.keys.has(k)));
+      if(!g){g={keys:new Set(keys),row:r}}else{
+        keys.forEach(k=>g.keys.add(k));
+        for(const f of ['name','customer','company','email','phone','mobile','tel','evidence','source','interest','category','date','발굴일','discoveredAt','discoveryDate','foundDate','createdAt']) if(!clean(g.row[f])&&clean(r[f])) g.row[f]=r[f];
+        if(done(r)) g.row.contactActivityConfirmed=true;
+        for(const f of ['firstContactCompleted','mailSent','mailConfirmed','smsSent','smsConfirmed','mailNotNeeded','smsNotNeeded']) if(r[f]===true) g.row[f]=true;
+      }
+    }
+    return groups.map(g=>g.row).sort((a,b)=>{
+      const da=dateKey(dateOf(a)),db=dateKey(dateOf(b));
+      return (da||'9999-99-99').localeCompare(db||'9999-99-99') || identity(a).name.localeCompare(identity(b).name,'ko');
+    });
+  }
+  const esc=v=>clean(v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let last='';
+  function render(){
+    const rows=canonical(),contacts=rows.filter(done),candidates=rows.filter(r=>!done(r));
+    const today=rows.filter(r=>dateKey(dateOf(r))===todayKey()).length;
+    const sig=JSON.stringify([rows.length,contacts.length,candidates.length,today,rows.map(r=>identity(r).name)]);
+    if(sig===last) return; last=sig;
+    const set=(id,v)=>{const e=document.querySelector(id);if(e)e.textContent=String(v)};
+    set('#totalCount',rows.length);set('#contactCount',contacts.length);set('#todayCount',`${today}/${today}`);set('#totalSummary',`전체 ${rows.length}곳`);set('#recommendationCount',`${candidates.length}곳`);
+    const box=document.querySelector('#recommendationRows');
+    if(box) box.innerHTML=candidates.map(r=>{const i=identity(r),name=i.name||'업체';return `<tr><td><strong>${rows.indexOf(r)+1} ${esc(name)}</strong><small class="badge">${done(r)?'고객':'후보'}</small></td><td>${esc(r.evidence||r.source||'공개 업체 연락처')}</td><td>${esc(r.interest||r.category||'')}</td><td>${i.email?`<a href="mailto:${esc(i.email)}">${esc(i.email)}</a>`:'미등록'}</td><td>${i.phone?`<a href="tel:${esc(i.phone)}">${esc(i.phone)}</a>`:'미등록'}</td><td>${esc(r.reason||r.link||'')}</td><td><button type="button" onclick="window.yhOpenContact&&window.yhOpenContact(${JSON.stringify(r)})">첫 연락</button></td></tr>`}).join('');
+  }
+  const run=()=>{render();setTimeout(render,250);setTimeout(render,1000);setTimeout(render,2500)};
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',run); else run();
+  window.addEventListener('storage',run); setInterval(render,3000);
 })();
 
 /* Final customer-discovery reconciliation: keep visible totals and rows on one source of truth. */
