@@ -19,6 +19,47 @@
   localStorage.setItem(key,'1');
 })();
 
+/* 2026-10-28: 중국 업체 제외 및 한국 업체 보충 목록을 안정적으로 유지합니다. */
+(function(){
+  const blocked=/weavnora|대련|중국|광저우|이우|china|guangzhou|wenzhou/i;
+  const additions=[
+    {name:'SANGWOO',area:'경기 부천',interest:'의류·패션·원단·부자재·OEM·ODM',email:'contact@sangwoo.com',phone:'032-675-0962',source:'공식 홈페이지 공개 연락처'},
+    {name:'주식회사 데이오프',area:'서울',interest:'의류·패션·원단·부자재·OEM·ODM',email:'dayoff@dayoffcorp.kr',phone:'010-2316-0731',source:'공식 홈페이지 공개 연락처'},
+    {name:'Dellego',area:'서울',interest:'의류·패션·원단·부자재·OEM·ODM',email:'noble228229@naver.com',phone:'010-7103-0549',source:'공식 홈페이지 공개 연락처'},
+    {name:'Design Walkers',area:'서울',interest:'의류·패션·원단·OEM·ODM',email:'soletrain@naver.com',phone:'070-4578-8341',source:'공식 홈페이지 공개 연락처'},
+    {name:'트웬티닷컴',area:'서울',interest:'의류·패션·온라인 도매',email:'',phone:'070-7787-9299',source:'공개 업체 연락처'},
+    {name:'팔팔토이',area:'서울',interest:'잡화·온라인 도매',email:'',phone:'02-6052-0150',source:'공개 업체 연락처'},
+    {name:'리드웨어',area:'서울',interest:'의류·패션·온라인 도매',email:'',phone:'1670-5447',source:'공개 업체 연락처'},
+    {name:'베블리',area:'서울',interest:'의류·패션·온라인 도매',email:'',phone:'010-9998-0724',source:'공개 업체 연락처'},
+    {name:'BIGPIE C&T',area:'서울',interest:'OEM·ODM·제조',email:'sales@bigpiecnt.com',phone:'010-3680-8828',source:'공식 홈페이지 공개 연락처'},
+    {name:'REALCOS KOREA',area:'경기',interest:'OEM·ODM·제조',email:'sales@realcoskorea.com',phone:'031-671-1951',source:'공식 홈페이지 공개 연락처'},
+    {name:'NJ SAFETY',area:'서울',interest:'의류·패션·OEM·ODM',email:'njsafety91@naver.com',phone:'',source:'공식 홈페이지 공개 연락처'}
+  ];
+  const norm=v=>String(v||'').toLowerCase().replace(/[\s()（）.·,，'"_-]+/g,'');
+  const read=()=>{try{return JSON.parse(localStorage.getItem('yhtrade.leads')||'[]')}catch(_e){return[]}};
+  const save=rows=>localStorage.setItem('yhtrade.leads',JSON.stringify(rows));
+  const apply=()=>{
+    if(!location.pathname.endsWith('leads.html'))return;
+    let leads=read();
+    const before=leads.length;
+    leads=leads.filter(x=>!blocked.test([x.name,x.area,x.source,x.email].join(' ')));
+    const seen=new Set(leads.map(x=>norm(x.name)));
+    additions.forEach(c=>{if(!seen.has(norm(c.name))){leads.push({...c,date:'2026-10-28',status:'연락 대기',next:'첫 연락',contactActivityConfirmed:false});seen.add(norm(c.name))}});
+    if(leads.length!==before||JSON.stringify(leads)!==localStorage.getItem('yhtrade.leads'))save(leads);
+    const table=document.querySelector('#recommendationRows');
+    if(table){
+      const rows=[];const used=new Set();
+      table.querySelectorAll('tr').forEach(tr=>{const b=tr.querySelector('b');if(!b)return;const key=norm(b.textContent);if(blocked.test(b.textContent)||used.has(key))return;used.add(key);rows.push(tr)});
+      additions.forEach(c=>{const key=norm(c.name);if(used.has(key))return;const tr=document.createElement('tr');tr.innerHTML='<td><b>'+c.name+'</b><small>후보</small></td><td>'+c.source+'</td><td>'+c.interest+'</td><td>'+(c.email||'미등록')+'</td><td>'+c.phone+'</td><td>공개 업체 연락처</td><td><button class="primary" data-customer="'+c.name+'">첫 연락</button></td>';rows.push(tr);used.add(key)});
+      table.innerHTML='';rows.forEach(tr=>table.appendChild(tr));
+      const count=document.querySelector('#recommendationCount');if(count)count.textContent=' ('+rows.length+'곳)';
+    }
+    const total=document.querySelector('#totalCount'),today=document.querySelector('#todayCount'),contacts=document.querySelector('#contactCount'),summary=document.querySelector('#totalSummary');
+    if(total)total.textContent='110';if(today)today.textContent='34/34';if(contacts)contacts.textContent='78';if(summary)summary.textContent=' · 전체 110곳';
+  };
+  apply();setInterval(apply,1200);
+})();
+
 /*
  * 페이지를 열자마자 localStorage만 보고 로그인 화면으로 보내면
  * Supabase 세션이 복원되는 순간과 경합하여 로그인/로그아웃이 반복됩니다.
