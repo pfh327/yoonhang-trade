@@ -55,7 +55,7 @@
       const count=document.querySelector('#recommendationCount');if(count)count.textContent=' ('+rows.length+'곳)';
     }
     const total=document.querySelector('#totalCount'),today=document.querySelector('#todayCount'),contacts=document.querySelector('#contactCount'),summary=document.querySelector('#totalSummary');
-    if(total)total.textContent='110';if(today)today.textContent='34/34';if(contacts)contacts.textContent='78';if(summary)summary.textContent=' · 전체 110곳';
+    if(total)total.textContent='110';if(today)today.textContent='32/32';if(contacts)contacts.textContent='78';if(summary)summary.textContent=' · 전체 110곳';
   };
   apply();setInterval(apply,1200);
 })();
