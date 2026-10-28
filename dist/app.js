@@ -42,6 +42,14 @@ function yhtradeLiveStats(){
   localStorage.setItem(key,'1');
 })();
 
+// Keep the first-contact SMS wording consistent with the approved mobile message.
+window.addEventListener('DOMContentLoaded', function(){
+  window.smsTemplate = function(company, person){
+    const greeting = person ? person + '님' : company + ' 담당자님';
+    return '안녕하세요. ' + greeting + '\n중국 무역과 구매대행을 전문으로 하는 윤항무역 Aimee Park입니다.\n15년 이상 중국 현지 소싱·OEM/ODM 생산을 진행하고 있으며, 이우 현지 사무실을 통해 검품·물류·통관까지 일괄 대행합니다.\n상품 사진이나 원단·부자재를 보내주셔도 소싱 및 견적 안내가 가능하며, 샘플로 품질 확인도 가능합니다.\n작은 거래부터 좋은 인연으로 이어지길 희망합니다. 편하게 문의 부탁드립니다.\n윤항무역 Aimee Park\n홈페이지: https://www.trade-yh.com\n010-4960-1314';
+  };
+});
+
 /* 2026-10-28 공통 연락 완료 자동 반영: 메일 처리와 문자 불가 처리가 끝난 업체를 한 번만 연락관리로 확정합니다. */
 (function(){
   let leads=[];
