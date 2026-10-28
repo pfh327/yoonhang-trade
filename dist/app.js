@@ -19,6 +19,36 @@
   localStorage.setItem(key,'1');
 })();
 
+/* 2026-10-28 코리안프렌즈 메일 완료·문자 불가 기록 복구 */
+(function(){
+  const variants=new Set(['코리안프렌즈','코리안 프렌즈','Korean Friends'].map(v=>String(v).trim().toLowerCase().replace(/[\s()（）.·,，'"_-]+/g,'')));
+  const emailKey='info@koreanfriends.co.kr';
+  const norm=v=>String(v||'').trim().toLowerCase().replace(/[\s()（）.·,，'"_-]+/g,'');
+  let leads=[];
+  try{leads=JSON.parse(localStorage.getItem('yhtrade.leads')||'[]')}catch(_e){leads=[]}
+  let item=leads.find(x=>variants.has(norm(x.name))||norm(x.email)===norm(emailKey));
+  if(!item){
+    item={date:'2026-10-28',name:'코리안프렌즈',area:'',interest:'의류·패션·원단·부자재·OEM·ODM',email:emailKey,phone:'070-4452-5942',evidence:'오늘 확인한 공개 업체 연락처',source:'공식 업체 홈페이지',status:'연락 완료(작성)',next:'후속 확인'};
+    leads.push(item);
+  }
+  item.name='코리안프렌즈';
+  item.email=item.email||emailKey;
+  item.phone=item.phone||'070-4452-5942';
+  item.mailWritten=true;
+  item.smsNotNeeded=true;
+  item.contactActivityConfirmed=true;
+  item.status='연락 완료(작성)';
+  item.next='후속 확인';
+  item.lastContactAt=item.lastContactAt||new Date().toISOString();
+  item.log=item.log||'메일 발송 완료 | 문자 불가 확인';
+  leads=leads.filter((x,i)=>i===leads.indexOf(item)||( !variants.has(norm(x.name)) && norm(x.email)!==norm(emailKey) ));
+  localStorage.setItem('yhtrade.leads',JSON.stringify(leads));
+  let contacts={};try{contacts=JSON.parse(localStorage.getItem('yhtrade.contacts')||'{}')}catch(_e){contacts={}}
+  let contactChanged=false;
+  Object.keys(contacts).forEach(k=>{if(variants.has(norm(k))&&k!=='코리안프렌즈'){if(!contacts['코리안프렌즈'])contacts['코리안프렌즈']=contacts[k];delete contacts[k];contactChanged=true}});
+  if(contactChanged||contacts['코리안프렌즈']){contacts['코리안프렌즈']={...(contacts['코리안프렌즈']||{}),email:emailKey,phone:'070-4452-5942'};localStorage.setItem('yhtrade.contacts',JSON.stringify(contacts))}
+})();
+
 /* 2026-10-28: 중국 업체 제외 및 한국 업체 보충 목록을 안정적으로 유지합니다. */
 (function(){
   const blocked=/weavnora|대련|중국|광저우|이우|china|guangzhou|wenzhou/i;
@@ -177,7 +207,7 @@
     let leads=[];
     try{leads=JSON.parse(localStorage.getItem('yhtrade.leads')||'[]')}catch(_e){leads=[]}
     const norm=v=>String(v||'').split(' — ')[0].trim().toLowerCase().replace(/[\s()（）.·,，'"-]+/g,'');
-    const discovery=new Set(['코리안프렌즈','대련 리스폰','에프엔엔','이유 인터네셔널','티집','이에스에르마나','제이앤케이컴퍼니리미티드','Weavnora','굿트러스트','FM컴퍼니','Afirst','TTAM','SINOPROUD','ATLY','grain works','류콘 글로벌','KN Company','Hansoll','WRT Studio','SHINTS','모아라벨(두용상사)','FNA KOREA','MASTIC KOREA'].map(norm));
+    const discovery=new Set(['대련 리스폰','에프엔엔','이유 인터네셔널','티집','이에스에르마나','제이앤케이컴퍼니리미티드','Weavnora','굿트러스트','FM컴퍼니','Afirst','TTAM','SINOPROUD','ATLY','grain works','류콘 글로벌','KN Company','Hansoll','WRT Studio','SHINTS','모아라벨(두용상사)','FNA KOREA','MASTIC KOREA'].map(norm));
     const done=new Set(leads.filter(x=>x&&x.contactActivityConfirmed===true&&!discovery.has(norm(x.name))).map(x=>norm(x.name)));
     const seen=new Set();
     Array.from(table.querySelectorAll('tr')).forEach(row=>{
