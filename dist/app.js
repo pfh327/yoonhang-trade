@@ -125,34 +125,15 @@ window.addEventListener('DOMContentLoaded', function(){
   if(changed)localStorage.setItem('yhtrade.leads',JSON.stringify(leads));
 })();
 
-/* 2026-10-28 코리안프렌즈 메일 완료·문자 불가 기록 복구 */
+/* 2026-10-28 코리안프렌즈 식별명만 정리합니다.
+ * 문자창을 열었다는 이유로 메일 완료/연락 완료로 강제하지 않습니다. */
 (function(){
   const variants=new Set(['코리안프렌즈','코리안 프렌즈','Korean Friends'].map(v=>String(v).trim().toLowerCase().replace(/[\s()（）.·,，'"_-]+/g,'')));
   const emailKey='info@koreanfriends.co.kr';
   const norm=v=>String(v||'').trim().toLowerCase().replace(/[\s()（）.·,，'"_-]+/g,'');
-  let leads=[];
-  try{leads=JSON.parse(localStorage.getItem('yhtrade.leads')||'[]')}catch(_e){leads=[]}
-  let item=leads.find(x=>variants.has(norm(x.name))||norm(x.email)===norm(emailKey));
-  if(!item){
-    item={date:'2026-10-28',name:'코리안프렌즈',area:'',interest:'의류·패션·원단·부자재·OEM·ODM',email:emailKey,phone:'070-4452-5942',evidence:'오늘 확인한 공개 업체 연락처',source:'공식 업체 홈페이지',status:'연락 완료(작성)',next:'후속 확인'};
-    leads.push(item);
-  }
-  item.name='코리안프렌즈';
-  item.email=item.email||emailKey;
-  item.phone=item.phone||'070-4452-5942';
-  item.mailWritten=true;
-  item.smsNotNeeded=true;
-  item.contactActivityConfirmed=true;
-  item.status='연락 완료(작성)';
-  item.next='후속 확인';
-  item.lastContactAt=item.lastContactAt||new Date().toISOString();
-  item.log=item.log||'메일 발송 완료 | 문자 불가 확인';
-  leads=leads.filter((x,i)=>i===leads.indexOf(item)||( !variants.has(norm(x.name)) && norm(x.email)!==norm(emailKey) ));
-  localStorage.setItem('yhtrade.leads',JSON.stringify(leads));
-  let contacts={};try{contacts=JSON.parse(localStorage.getItem('yhtrade.contacts')||'{}')}catch(_e){contacts={}}
-  let contactChanged=false;
-  Object.keys(contacts).forEach(k=>{if(variants.has(norm(k))&&k!=='코리안프렌즈'){if(!contacts['코리안프렌즈'])contacts['코리안프렌즈']=contacts[k];delete contacts[k];contactChanged=true}});
-  if(contactChanged||contacts['코리안프렌즈']){contacts['코리안프렌즈']={...(contacts['코리안프렌즈']||{}),email:emailKey,phone:'070-4452-5942'};localStorage.setItem('yhtrade.contacts',JSON.stringify(contacts))}
+  let leads=[];try{leads=JSON.parse(localStorage.getItem('yhtrade.leads')||'[]')}catch(_e){leads=[]}
+  const item=leads.find(x=>variants.has(norm(x.name))||norm(x.email)===norm(emailKey));
+  if(item){item.name='코리안프렌즈';item.email=item.email||emailKey;item.phone=item.phone||'070-4452-5942';localStorage.setItem('yhtrade.leads',JSON.stringify(leads))}
 })();
 
 /* 2026-10-28: 중국 업체 제외 및 한국 업체 보충 목록을 안정적으로 유지합니다. */
@@ -385,4 +366,63 @@ window.addEventListener('DOMContentLoaded', function(){
       localStorage.setItem(key,'1');
     }
   }catch(_e){}
+
+  // 문자창만 열었거나 저장 중 화면이 갱신되어 양쪽 목록에서 사라진
+  // 업체를 고객발굴로 복구합니다. 실제 발송 확인이 없는 경우에만 적용합니다.
+  (function missingLeadRestoreV2(){
+    const missing=[
+      {name:'코리안프렌즈',email:'info@koreanfriends.co.kr',phone:'070-4452-5942'},
+      {name:'에프엔엔',email:'may@friday9.co.kr',phone:'02-542-4866'},
+      {name:'이유 인터네셔널',email:'',phone:'010-4750-7448'},
+      {name:'티집',email:'teeezip@teeezip.com',phone:''},
+      {name:'이에스에르마나',email:'hermanar2024@daum.net',phone:'010-5122-5834'},
+      {name:'제이앤케이컴퍼니리미티드',email:'',phone:'010-4823-1422'},
+      {name:'굿트러스트',email:'sales@goodtrust.co.kr',phone:'051-526-4018'},
+      {name:'FM컴퍼니',email:'fmcompany24@naver.com',phone:'010-4857-2824'}
+    ];
+    const norm=v=>String(v||'').toLowerCase().replace(/[^0-9a-z가-힣]/g,'');
+    const keys=x=>[norm(x.name),norm(x.email),norm(x.phone)].filter(Boolean);
+    const hasActual=x=>{
+      const log=String(x&&x.log||'');
+      return x&&((x.mailConfirmed===true)||(x.smsConfirmed===true)||log.includes('메일 발송 완료')||log.includes('문자 발송 완료')||log.includes('문자 전송 완료'));
+    };
+    const apply=()=>{
+      let leads=[];
+      try{leads=JSON.parse(localStorage.getItem('yhtrade.leads')||'[]')}catch(_e){leads=[]}
+      let contacts={};
+      try{contacts=JSON.parse(localStorage.getItem('yhtrade.contacts')||'{}')}catch(_e){contacts={}}
+      let changed=false;
+      const leadKeys=new Set(leads.flatMap(keys));
+      missing.forEach(src=>{
+        let item=leads.find(x=>keys(x).some(k=>keys(src).includes(k)));
+        if(!item){
+          item={date:'2026-10-28',name:src.name,area:'',interest:'의류·패션·원단·부자재·OEM·ODM',email:src.email,phone:src.phone,evidence:'오늘 확인한 공개 업체 연락처',source:'공식 업체 홈페이지',status:'연락 대기',next:'첫 연락',contactActivityConfirmed:false,smsWritten:false,smsPrepared:false,mailWritten:false};
+          leads.push(item); changed=true;
+        }else{
+          // 사용자가 명시한 8곳은 이번 목록에서 실제 전송되지 않은 누락 업체입니다.
+          // 기존에 잘못 남은 작성/완료 상태를 초기화하여 다시 첫 연락 대상으로 둡니다.
+          const before=JSON.stringify(item);
+          item.name=src.name; item.email=src.email||item.email||''; item.phone=src.phone||item.phone||'';
+          item.contactActivityConfirmed=false; item.smsWritten=false; item.smsPrepared=false; item.mailWritten=false;
+          item.status='연락 대기'; item.next='첫 연락'; item.lastChannel='';
+          delete item.lastContactAt; delete item.mailConfirmed; delete item.smsConfirmed; delete item.smsNotNeeded; delete item.mailNotNeeded;
+          if(JSON.stringify(item)!==before)changed=true;
+        }
+        const matchKeys=new Set(keys(src));
+        Object.keys(contacts).forEach(k=>{
+          const c=contacts[k]||{};
+          if(matchKeys.has(norm(k))||keys(c).some(v=>matchKeys.has(v))){ delete contacts[k]; changed=true; }
+        });
+      });
+      if(changed){
+        localStorage.setItem('yhtrade.leads',JSON.stringify(leads));
+        localStorage.setItem('yhtrade.contacts',JSON.stringify(contacts));
+        if(location.pathname.endsWith('leads.html')&&!sessionStorage.getItem('yhtrade.missingLeadRestoreV2Reload')){
+          sessionStorage.setItem('yhtrade.missingLeadRestoreV2Reload','1');
+          setTimeout(()=>location.reload(),80);
+        }
+      }
+    };
+    [1200,3000,6000].forEach(ms=>setTimeout(apply,ms));
+  })();
 })();
