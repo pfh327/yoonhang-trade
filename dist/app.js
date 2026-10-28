@@ -50,7 +50,7 @@
     if(table){
       const rows=[];const used=new Set();
       table.querySelectorAll('tr').forEach(tr=>{const b=tr.querySelector('b');if(!b)return;const key=norm(b.textContent);if(blocked.test(b.textContent)||used.has(key))return;used.add(key);rows.push(tr)});
-      additions.forEach(c=>{const key=norm(c.name);if(used.has(key))return;const tr=document.createElement('tr');tr.innerHTML='<td><b>'+c.name+'</b><small>후보</small></td><td>'+c.source+'</td><td>'+c.interest+'</td><td>'+(c.email||'미등록')+'</td><td>'+c.phone+'</td><td>공개 업체 연락처</td><td><button class="primary" data-customer="'+c.name+'">첫 연락</button></td>';rows.push(tr);used.add(key)});
+      additions.forEach(c=>{const key=norm(c.name);if(used.has(key))return;const tr=document.createElement('tr');tr.innerHTML='<td><b>'+c.name+'</b><small>후보</small></td><td>'+c.source+'</td><td>'+c.interest+'</td><td>'+(c.email||'미등록')+'</td><td>'+c.phone+'</td><td>공개 업체 연락처</td><td><button class="btn primary" data-customer="'+c.name+'">첫 연락</button></td>';rows.push(tr);used.add(key)});
       table.innerHTML='';rows.forEach(tr=>table.appendChild(tr));
       const count=document.querySelector('#recommendationCount');if(count)count.textContent=' ('+rows.length+'곳)';
     }
