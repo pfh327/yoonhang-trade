@@ -340,4 +340,49 @@ window.addEventListener('DOMContentLoaded', function(){
   // 이전의 주기적 보정 로직이 화면을 다시 덮어써 77곳으로 줄어드는 문제를 막습니다.
   const syncOutreach=()=>{};
   if(document.querySelector('#outreachRows')){[1800,3500,6000].forEach(ms=>setTimeout(syncOutreach,ms));setInterval(syncOutreach,3000)}
+
+  // 문자 작성창을 여는 것과 실제 발송을 분리합니다.
+  // leads.html의 기존 인라인 핸들러가 작성창을 열면서 저장값을 먼저 바꾸므로,
+  // 작성창만 연 경우에는 저장 전 상태를 즉시 복원합니다.
+  if(!window.__yhSmsOpenGuard){
+    window.__yhSmsOpenGuard=true;
+    document.addEventListener('click',function(e){
+      const button=e.target&&e.target.closest?e.target.closest('#sendSms'):null;
+      if(!button)return;
+      const beforeLeads=localStorage.getItem('yhtrade.leads');
+      const beforeContacts=localStorage.getItem('yhtrade.contacts');
+      setTimeout(function(){
+        if(beforeLeads!==null)localStorage.setItem('yhtrade.leads',beforeLeads);
+        if(beforeContacts!==null)localStorage.setItem('yhtrade.contacts',beforeContacts);
+      },0);
+    },true);
+  }
+
+  // 과거에 문자 작성만 했는데 완료로 저장된 기록을 한 번 복구합니다.
+  // 실제 발송 완료 로그나 사용자의 명시적 확인이 있는 기록은 건드리지 않습니다.
+  try{
+    const key='yhtrade.smsDraftOnlyRepairV1';
+    if(!localStorage.getItem(key)){
+      const raw=localStorage.getItem('yhtrade.leads');
+      const leads=raw?JSON.parse(raw):[];
+      let changed=false;
+      leads.forEach(item=>{
+        const log=String(item&&item.log||'');
+        const draftOnly=item&&item.smsPrepared===true;
+        const actual=item&&item.smsConfirmed===true||log.includes('문자 발송 완료')||log.includes('문자 전송 완료');
+        if(draftOnly&&!actual){
+          item.smsWritten=false;
+          item.smsPrepared=false;
+          item.contactActivityConfirmed=false;
+          item.status='연락 대기';
+          item.next='첫 연락';
+          item.lastChannel='문자 작성';
+          delete item.lastContactAt;
+          changed=true;
+        }
+      });
+      if(changed)localStorage.setItem('yhtrade.leads',JSON.stringify(leads));
+      localStorage.setItem(key,'1');
+    }
+  }catch(_e){}
 })();
