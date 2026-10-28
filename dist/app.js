@@ -19,6 +19,28 @@
   localStorage.setItem(key,'1');
 })();
 
+/* 2026-10-28 공통 연락 완료 자동 반영: 메일 처리와 문자 불가 처리가 끝난 업체를 한 번만 연락관리로 확정합니다. */
+(function(){
+  let leads=[];
+  try{leads=JSON.parse(localStorage.getItem('yhtrade.leads')||'[]')}catch(_e){leads=[]}
+  const hasMobile=v=>/^01[016789]\d{7,8}$/.test(String(v||'').replace(/\D/g,''));
+  let changed=false;
+  leads.forEach(item=>{
+    if(!item||item.contactActivityConfirmed===true)return;
+    const hasMail=!!String(item.email||'').trim();
+    const mailDone=item.mailWritten===true||item.mailNotNeeded===true;
+    const smsDone=!hasMobile(item.phone)||(item.smsWritten===true||item.smsNotNeeded===true);
+    if((hasMail?mailDone:true)&&smsDone){
+      item.contactActivityConfirmed=true;
+      item.status='연락 완료(작성)';
+      item.next='후속 확인';
+      item.lastContactAt=item.lastContactAt||new Date().toISOString();
+      changed=true;
+    }
+  });
+  if(changed)localStorage.setItem('yhtrade.leads',JSON.stringify(leads));
+})();
+
 /* 2026-10-28 코리안프렌즈 메일 완료·문자 불가 기록 복구 */
 (function(){
   const variants=new Set(['코리안프렌즈','코리안 프렌즈','Korean Friends'].map(v=>String(v).trim().toLowerCase().replace(/[\s()（）.·,，'"_-]+/g,'')));
@@ -208,7 +230,7 @@
     try{leads=JSON.parse(localStorage.getItem('yhtrade.leads')||'[]')}catch(_e){leads=[]}
     const norm=v=>String(v||'').split(' — ')[0].trim().toLowerCase().replace(/[\s()（）.·,，'"-]+/g,'');
     const discovery=new Set(['대련 리스폰','에프엔엔','이유 인터네셔널','티집','이에스에르마나','제이앤케이컴퍼니리미티드','Weavnora','굿트러스트','FM컴퍼니','Afirst','TTAM','SINOPROUD','ATLY','grain works','류콘 글로벌','KN Company','Hansoll','WRT Studio','SHINTS','모아라벨(두용상사)','FNA KOREA','MASTIC KOREA'].map(norm));
-    const done=new Set(leads.filter(x=>x&&x.contactActivityConfirmed===true&&!discovery.has(norm(x.name))).map(x=>norm(x.name)));
+    const done=new Set(leads.filter(x=>x&&x.contactActivityConfirmed===true).map(x=>norm(x.name)));
     const seen=new Set();
     Array.from(table.querySelectorAll('tr')).forEach(row=>{
       const label=row.querySelector('b');
