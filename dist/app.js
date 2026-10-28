@@ -1,3 +1,24 @@
+/* 엑셀 NO 76·77 연락관리 복원: outreach.html이 읽기 전에 로컬 목록을 보정합니다. */
+(function(){
+  const key='yhtrade.restoreExcelOutreach7677v2';
+  if(localStorage.getItem(key)==='1') return;
+  const dates={'연일섬유':'2026-10-24','JMONZ OEM ODM CREW':'2026-10-24'};
+  let leads=[];
+  try{ leads=JSON.parse(localStorage.getItem('yhtrade.leads')||'[]'); }catch(_e){ leads=[]; }
+  Object.keys(dates).forEach(name=>{
+    let lead=leads.find(x=>String(x.name||'').trim()===name);
+    if(!lead){
+      lead={name,date:dates[name],email:'',phone:'',interest:'의류·패션·원단·부자재·OEM·ODM',status:'연락 완료(작성)',next:'후속 확인',contactActivityConfirmed:true,lastContactAt:dates[name]+'T09:00:00+09:00',log:'연락 완료'};
+      leads.push(lead);
+    }else{
+      lead.date=dates[name]; lead.contactActivityConfirmed=true; lead.status='연락 완료(작성)'; lead.next='후속 확인';
+      lead.lastContactAt=lead.lastContactAt||dates[name]+'T09:00:00+09:00';
+    }
+  });
+  localStorage.setItem('yhtrade.leads',JSON.stringify(leads));
+  localStorage.setItem(key,'1');
+})();
+
 /*
  * 페이지를 열자마자 localStorage만 보고 로그인 화면으로 보내면
  * Supabase 세션이 복원되는 순간과 경합하여 로그인/로그아웃이 반복됩니다.
