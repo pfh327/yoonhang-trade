@@ -1,3 +1,26 @@
+/* 실제 저장 목록을 기준으로 모든 화면의 숫자를 계산합니다. */
+function yhtradeLiveStats(){
+  let leads=[];
+  try{leads=JSON.parse(localStorage.getItem('yhtrade.leads')||'[]')}catch(_e){leads=[]}
+  const norm=v=>String(v||'').trim().toLowerCase().replace(/[\s()（）.·,，'"_-]+/g,'');
+  const unique=new Map();
+  leads.forEach(item=>{
+    if(!item||!String(item.name||'').trim())return;
+    const key=norm(item.name);
+    if(!unique.has(key))unique.set(key,item);
+  });
+  const rows=[...unique.values()];
+  const dateKey=value=>{
+    const text=String(value||'');
+    const match=text.match(/(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})/);
+    return match?match[1]+'-'+String(match[2]).padStart(2,'0')+'-'+String(match[3]).padStart(2,'0'):'';
+  };
+  const today=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Seoul'}).format(new Date());
+  const todayCount=rows.filter(item=>dateKey(item.date||item.discoveryDate||item.discoveredAt||item.createdAt)===today).length;
+  const contacts=rows.filter(item=>item.contactActivityConfirmed===true).length;
+  return {total:rows.length,today:todayCount,contacts};
+}
+
 /* 엑셀 NO 76·77 연락관리 복원: outreach.html이 읽기 전에 로컬 목록을 보정합니다. */
 (function(){
   const key='yhtrade.restoreExcelOutreach7677v2';
@@ -106,8 +129,12 @@
       table.innerHTML='';rows.forEach(tr=>table.appendChild(tr));
       const count=document.querySelector('#recommendationCount');if(count)count.textContent=' ('+rows.length+'곳)';
     }
+    const stats=yhtradeLiveStats();
     const total=document.querySelector('#totalCount'),today=document.querySelector('#todayCount'),contacts=document.querySelector('#contactCount'),summary=document.querySelector('#totalSummary');
-    if(total)total.textContent='110';if(today)today.textContent='32/32';if(contacts)contacts.textContent='78';if(summary)summary.textContent=' · 전체 110곳';
+    if(total)total.textContent=String(stats.total);
+    if(today)today.textContent=String(stats.today)+'/'+String(stats.today);
+    if(contacts)contacts.textContent=String(stats.contacts);
+    if(summary)summary.textContent=' · 전체 '+String(stats.total)+'곳';
   };
   apply();setInterval(apply,1200);
 })();
@@ -213,12 +240,13 @@
     }
   }catch(_e){}
 
-  // 고객발굴 기준 집계: 전체 101곳, 오늘 추가 23곳, 연락관리 등록 78곳.
+  // 다른 보정 로직이 실행된 뒤에도 같은 저장 목록 기준으로 숫자를 다시 표시합니다.
   setTimeout(()=>{
+    const stats=yhtradeLiveStats();
     const total=document.querySelector('#totalCount'),today=document.querySelector('#todayCount'),contacts=document.querySelector('#contactCount');
-    if(total)total.textContent='101';
-    if(today)today.textContent='23/23';
-    if(contacts)contacts.textContent='78';
+    if(total)total.textContent=String(stats.total);
+    if(today)today.textContent=String(stats.today)+'/'+String(stats.today);
+    if(contacts)contacts.textContent=String(stats.contacts);
   },1200);
 
   // 고객발굴 페이지의 기존 초기화 스크립트가 뒤늦게 표를 다시 그려도,
