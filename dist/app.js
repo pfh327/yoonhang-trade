@@ -42,6 +42,43 @@ function yhtradeLiveStats(){
   localStorage.setItem(key,'1');
 })();
 
+/* 연락처 저장만 완료해도 연락관리로 즉시 반영하고, 기존 저장 기록도 한 번 보정합니다. */
+window.addEventListener('DOMContentLoaded', function(){
+  const saveBtn=document.querySelector('#saveContact');
+  const read=(key,fallback)=>{try{return JSON.parse(localStorage.getItem(key)||'')}catch(_e){return fallback}};
+  const write=(key,value)=>localStorage.setItem(key,JSON.stringify(value));
+  const leads=read('yhtrade.leads',[]);
+  const contacts=read('yhtrade.contacts',{});
+  let reconciled=false;
+  leads.forEach(item=>{
+    const name=String(item&&item.name||'').trim();
+    const base=name.split(' — ')[0].trim();
+    const saved=contacts[name]||contacts[base];
+    if(saved&&saved.lastChannel&&item.contactActivityConfirmed!==true){
+      item.contactActivityConfirmed=true;
+      item.status='연락 완료(작성)';
+      item.next='후속 확인';
+      item.lastContactAt=item.lastContactAt||saved.lastContactAt||new Date().toISOString();
+      reconciled=true;
+    }
+  });
+  if(reconciled)write('yhtrade.leads',leads);
+  if(!saveBtn)return;
+  saveBtn.onclick=function(){
+    const title=document.querySelector('#modalTitle');
+    const name=(title?title.textContent:'').replace(/\s*연락처\s*$/,'').trim();
+    const email=String((document.querySelector('#contactEmail')||{}).value||'').trim();
+    const phone=String((document.querySelector('#contactPhone')||{}).value||'').trim();
+    const rows=read('yhtrade.leads',[]);
+    let item=rows.find(x=>String(x.name||'').trim()===name||String(x.name||'').split(' — ')[0].trim()===name);
+    if(!item){item={name:name,email:'',phone:'',status:'연락 대기',next:'첫 연락'};rows.push(item)}
+    item.email=email;item.phone=phone;item.contactActivityConfirmed=true;item.status='연락 완료(작성)';item.next='후속 확인';item.lastContactAt=new Date().toISOString();item.log=(item.log?item.log+' | ':'')+'연락처 저장 처리';
+    const saved=read('yhtrade.contacts',{});saved[name]={email,phone,lastChannel:'연락처 저장',lastContactAt:item.lastContactAt};
+    write('yhtrade.leads',rows);write('yhtrade.contacts',saved);
+    location.href='outreach.html?from=lead';
+  };
+});
+
 // Keep the first-contact SMS wording consistent with the approved mobile message.
 window.addEventListener('DOMContentLoaded', function(){
   window.smsTemplate = function(company, person){
